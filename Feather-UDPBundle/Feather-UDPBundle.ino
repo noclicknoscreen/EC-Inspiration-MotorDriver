@@ -1,3 +1,4 @@
+
 /*---------------------------------------------------------------------------------------------
 
   Open Sound Control (OSC) library for the ESP8266
@@ -14,6 +15,8 @@
 #include <OSCBundle.h>
 #include <OSCData.h>
 
+#include <NCNS-ArduinoTools.h>
+
 char ssid[] = "InspirationHub";          // your network SSID (name)
 char pass[] = "Inspiration";                    // your network password
 
@@ -29,9 +32,22 @@ unsigned int receivedPosition = 0;              // LOW means led is *on*
 void setup() {
   Serial.begin(115200);
 
+  byte mac[6];
+  WiFi.macAddress(mac);
+  Serial.print("MAC Address: ");
+  Serial.print(mac[0], HEX);
+  Serial.print(":");
+  Serial.print(mac[1], HEX);
+  Serial.print(":");
+  Serial.print(mac[2], HEX);
+  Serial.print(":");
+  Serial.print(mac[3], HEX);
+  Serial.print(":");
+  Serial.print(mac[4], HEX);
+  Serial.print(":");
+  Serial.println(mac[5], HEX);
+
   // Connect to WiFi network
-  Serial.println();
-  Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, pass);
@@ -39,7 +55,8 @@ void setup() {
   pinMode(CTRL_LED, OUTPUT);
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
-    errorBlink(50);
+    errorBlink(CTRL_LED, 100);
+    delay(100);
   }
   Serial.println("");
 
@@ -55,18 +72,11 @@ void setup() {
 
 }
 
-void errorBlink(unsigned int delayMs) {
-  digitalWrite(CTRL_LED, HIGH);
-  delay(delayMs / 2);
-  digitalWrite(CTRL_LED, LOW);
-  delay(delayMs / 2);
-}
-
 void positionChange(OSCMessage &msg) {
 
   receivedPosition = 255 * msg.getFloat(0);
   analogWrite(CTRL_LED, receivedPosition);
-  
+
   Serial.print("/position: ");
   Serial.println(receivedPosition);
 
@@ -78,10 +88,12 @@ void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     // not connected => Message + Blink Short
     Serial.println("Wifi Not Connected :(");
-    errorBlink(50);
+    errorBlink(CTRL_LED, 100);
 
   } else {
-    
+
+    errorBlink(CTRL_LED, 1000);
+
     // Then wait for OSC
     OSCBundle bundle;
     int size = Udp.parsePacket();
@@ -100,7 +112,7 @@ void loop() {
         Serial.print("error: ");
         Serial.println(error);
         // not connected => Message + Blink Lon
-        errorBlink(100);
+        errorBlink(CTRL_LED, 200);
 
       }
     }
