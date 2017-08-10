@@ -24,14 +24,17 @@ char pass[] = "Inspiration";                    // your network password
 WiFiUDP Udp;
 const unsigned int localPort = 2390;        // local port to listen for UDP packets (here's where we send the packets)
 
-#define CTRL_LED 0
+#define ERROR_LED   0
+#define POSTN_LED   4
 
 OSCErrorCode error;
 unsigned int receivedPosition = 0;              // LOW means led is *on*
 
 void setup() {
   Serial.begin(115200);
-
+  pinMode(ERROR_LED, OUTPUT);
+  pinMode(POSTN_LED, OUTPUT);
+  
   byte mac[6];
   WiFi.macAddress(mac);
   Serial.print("MAC Address: ");
@@ -52,10 +55,9 @@ void setup() {
   Serial.println(ssid);
   WiFi.begin(ssid, pass);
 
-  pinMode(CTRL_LED, OUTPUT);
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
-    errorBlink(CTRL_LED, 100);
+    errorBlink(ERROR_LED, 100);
     delay(100);
   }
   Serial.println("");
@@ -73,11 +75,15 @@ void setup() {
 }
 
 void positionChange(OSCMessage &msg) {
-
-  receivedPosition = 255 * msg.getFloat(0);
-  analogWrite(CTRL_LED, receivedPosition);
+  // Possibly issue onto Millumin, so constrain the values
+  float msgContent = constrain(msg.getFloat(0), 0.0, 1.0);
+  
+  receivedPosition = 255 * msgContent;
+  analogWrite(POSTN_LED, receivedPosition);
 
   Serial.print("/position: ");
+  Serial.print(msgContent);
+  Serial.print(" receivedPosition : ");
   Serial.println(receivedPosition);
 
 }
@@ -88,18 +94,20 @@ void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     // not connected => Message + Blink Short
     Serial.println("Wifi Not Connected :(");
-    errorBlink(CTRL_LED, 100);
+    errorBlink(ERROR_LED, 100);
 
   } else {
 
-    errorBlink(CTRL_LED, 1000);
+    errorBlink(ERROR_LED, 1000);
 
     // Then wait for OSC
     OSCBundle bundle;
     int size = Udp.parsePacket();
 
     if (size > 0) {
-      Serial.println("OSC Packet Received");
+      Serial.print(millis());
+      Serial.print(" : ");
+      Serial.println("OSC Packet as Bundle Received");
 
       while (size--) {
         bundle.fill(Udp.read());
@@ -112,7 +120,7 @@ void loop() {
         Serial.print("error: ");
         Serial.println(error);
         // not connected => Message + Blink Lon
-        errorBlink(CTRL_LED, 200);
+        errorBlink(ERROR_LED, 200);
 
       }
     }
